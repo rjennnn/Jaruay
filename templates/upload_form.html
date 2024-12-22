@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Signature and Upload Form</title>
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Signature Pad Library -->
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.5/dist/signature_pad.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+</head>
+<body class="bg-gray-100 p-5">
+  <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4">เลือกรูป, ประเภทขนส่ง และลายเซ็น</h1>
+
+    <!-- Form -->
+    <form id="uploadForm" class="space-y-6">
+      <!-- Image Upload -->
+      <div>
+        <label for="imageUpload" class="block text-sm font-medium text-gray-700">Upload Images</label>
+        <input type="file" id="imageUpload" name="images[]" multiple 
+               class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-indigo-50 file:text-indigo-700
+                      hover:file:bg-indigo-100" />
+        <div id="imagePreview" class="mt-4 flex flex-wrap gap-4"></div>
+      </div>
+
+      <!-- Delivery Type -->
+      <div>
+        <label for="deliveryType" class="block text-sm font-medium text-gray-700">Select Delivery Type</label>
+        <select id="deliveryType" name="deliveryType" 
+                class="mt-2 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="" disabled selected>Select a type</option>
+        </select>
+      </div>
+
+      <!-- E-Signature -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700">E-Signature</label>
+        <div class="border border-gray-300 mt-2 rounded-lg">
+          <canvas id="signatureCanvas" class="w-full" width="400" height="200"></canvas>
+        </div>
+        <div class="flex gap-4 mt-4">
+          <button type="button" id="clearSignature" 
+                  class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600">
+            Clear
+          </button>
+          <button type="button" id="saveSignature" 
+                  class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600">
+            Save as Image
+          </button>
+        </div>
+      </div>
+      <input type="hidden" id="signatureData" name="signature" />
+
+      <!-- Submit Button -->
+      <button type="submit" 
+              class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700">
+        Submit
+      </button>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    $(document).ready(function () {
+      // Populate delivery type select list
+      
+      // const deliveryOptions = ['Kerry Express (KEX)', 'Lazada Express', 'Shopee Express', 'Thai Post'];
+      const deliveryOptions = [
+          "Shopee Express",
+          "Lazada",
+          "TikTok Shop",
+          "Flash Express",
+          "J&T Express",
+          "Kerry Express",
+          "DHL Express",
+          "Lalamove",
+          "Ninja Van",
+          "Others"
+        ];
+      deliveryOptions.forEach(option => {
+        $('#deliveryType').append(`<option value="${option}">${option}</option>`);
+      });
+
+      // Image preview
+      $('#imageUpload').on('change', function () {
+        const files = this.files;
+        $('#imagePreview').empty();
+        Array.from(files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const img = $('<img>')
+              .attr('src', e.target.result)
+              .addClass('w-24 h-24 object-cover rounded-lg shadow-md');
+            $('#imagePreview').append(img);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      // E-Signature with Signature Pad
+      const canvas = document.getElementById('signatureCanvas');
+      const signaturePad = new SignaturePad(canvas);
+
+      $('#clearSignature').on('click', function () {
+        signaturePad.clear();
+      });
+
+      $('#saveSignature').on('click', function () {
+        if (signaturePad.isEmpty()) {
+          alert('Please provide a signature first.');
+          return;
+        }
+        const dataURL = signaturePad.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = 'signature.png';
+        link.click();
+      });
+
+      // Form submission (dummy handler)
+      $('#uploadForm').on('submit', function (e) {
+        e.preventDefault();
+        // const formData = new FormData(this);
+        if (!signaturePad.isEmpty()) {
+          // const signatureBlob = dataURLtoBlob(signaturePad.toDataURL());
+          // formData.append('signature', signatureBlob, 'signature.png');
+          const dataURL = signaturePad.toDataURL('image/png');
+          $('#signatureData').val(dataURL);
+        }else{
+          alert('Please provide a signature first.');
+          return;
+        }
+        if ($("#deliveryType").val() == null) {
+          alert('Please select a delivery type.');
+          return;
+          
+        }
+        // const formData = $(this).serialize();
+
+        const formData = new FormData(this);
+        $.ajax({
+          url: '/upload',
+          type: 'POST',
+          data: formData,
+          contentType: false,
+          processData: false,
+          beforeSend: function () {
+            Swal.fire({
+              title: 'Uploading...',
+              allowOutsideClick: false,
+              showConfirmButton: false,
+              willOpen: () => {
+                Swal.showLoading();
+              }
+            });
+          },
+          success: function (response) {
+            Swal.close();
+            alert(response.message);
+            $('#imagePreview').empty();
+            $('#uploadForm').trigger('reset');
+            signaturePad.clear();
+          },
+          error: function (response) {
+            Swal.close();
+            alert(response.message);
+          }
+        });
+      });
+
+      // Helper function to convert dataURL to Blob
+      function dataURLtoBlob(dataURL) {
+        const parts = dataURL.split(',');
+        const byteString = atob(parts[1]);
+        const mimeString = parts[0].split(':')[1].split(';')[0];
+        const buffer = new ArrayBuffer(byteString.length);
+        const dataArray = new Uint8Array(buffer);
+        for (let i = 0; i < byteString.length; i++) {
+          dataArray[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([buffer], { type: mimeString });
+      }
+    });
+  </script>
+</body>
+</html>

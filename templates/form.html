@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Form</title>
+
+  <!-- CSS dist/output.css -->
+  <link href="../dist/output.css" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+  <!-- jQuery CDN -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="flex justify-center items-center min-h-screen">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Student Information (ตามข้อมูลหอพัก)</h2>
+      <form id="studentForm" class="space-y-4">
+        <!-- First Name -->
+        <div>
+          <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+          <input type="text" id="first_name" name="first_name" required
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        </div>
+
+        <!-- Last Name -->
+        <div>
+          <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+          <input type="text" id="last_name" name="last_name" required
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        </div>
+
+        <!-- Student ID -->
+        <div>
+          <label for="student_id" class="block text-sm font-medium text-gray-700">Student ID</label>
+          <input type="text" id="student_id" name="student_id" required
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        </div>
+
+        <!-- Room Number -->
+        <div>
+          <label for="room_number" class="block text-sm font-medium text-gray-700">Room Number</label>
+          <input type="text" id="room_number" name="room_number" required
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        </div>
+
+        <!-- Submit Button -->
+        <div>
+          <button type="submit"
+           id="submit_btn"
+            class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none">
+            Submit
+          </button>
+        </div>
+      </form>
+
+      <!-- Message -->
+      <div id="message" class="mt-4 text-center text-sm text-gray-700 hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function () {
+      // Handle form submission
+    //   get uid from get query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get('line_user_id');
+    if (!uid) {
+        console.warn("line_user_id not provided in URL");
+    }
+
+      
+    console.log(uid);
+      $('#studentForm').on('submit', function (e) {
+        e.preventDefault(); // Prevent default form submission
+
+        // Collect form data
+        const firstName = $('#first_name').val();
+        const lastName = $('#last_name').val();
+        const studentId = $('#student_id').val();
+        const roomNumber = $('#room_number').val();
+        let data = {
+            first_name: firstName,
+            last_name: lastName,
+            student_id: studentId,
+            room_number: roomNumber,
+            line_uid: uid
+        };
+        // Display a success message
+        $.ajax({
+            url: window.location.origin + '/submit',
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+
+            success: function (response) {
+                $('#message').text(response.message).removeClass('hidden').addClass('text-green-500');
+                $('#studentForm').trigger('reset');
+                // disable submit button
+                $('#submit_btn').prop('disabled', true);
+                $('#submit_btn').addClass('bg-gray-400');
+            },
+            error: function (xhr, status, error) {
+            console.log("Error Status: " + status);
+            console.log("Error Details: " + error);
+            console.log("Response Text: " + xhr.responseText);
+            let errorMessage = xhr.responseJSON ? xhr.responseJSON.message : "An error occurred.";
+            $('#message').text(errorMessage).removeClass('hidden').addClass('text-red-500');
+        }
+
+        })
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Scanner</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" integrity="sha512-r6rDA7W6ZeQhvl8S7yRVQUKVHdexq+GAlNkNNqVC7YyIV+NwqCTJe2hDWCiffTyRNOeGEzRRJ9ifvRm/HCzGYg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-md bg-white shadow-md rounded-lg p-6">
+    <h1 class="text-xl font-bold text-center text-gray-700 mb-4">QR Code Scanner</h1>
+    <div class="flex flex-col items-center">
+      <div id="qr-reader" class="w-64 h-64 mb-4"></div>
+      <div id="qrResult" 
+     class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-y-auto h-32 space-y-2">
+      </div>
+        <button id="scanAnother" 
+                class="mt-4 w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring focus:ring-blue-300 focus:outline-none">
+          Scan Another
+        </button>
+    </div>
+  </div>
+
+  <script>
+    const qrReader = new Html5Qrcode("qr-reader");
+    const qrResult = document.getElementById("qrResult");
+    const scanAnotherButton = document.getElementById("scanAnother");
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get('line_user_id') ??'';
+    // Start the camera and QR scanning
+    function displayResult(decodedText) {
+      const resultLine = `<div class="p-1 bg-gray-200 rounded-md">${decodedText}</div>`;
+      qrResult.innerHTML += resultLine;
+    }
+    function displaySuccessResult(decodedText) {
+      const resultLine = `<div class="p-1 bg-green-200 rounded-md">${decodedText}</div>`;
+      qrResult.innerHTML += resultLine;
+    }
+    function displayErrorResult(decodedText) {
+      const resultLine = `<div class="p-1 bg-red-200 rounded-md">${decodedText}</div>`;
+      qrResult.innerHTML += resultLine;
+    }
+
+    function  startScan() {
+      qrReader.start(
+      { facingMode: "environment" }, 
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        // Display scanned result
+        // displayResult(decodedText); 
+        qrReader.pause(); 
+        // Stop scanning after the first QR code is detected
+        qrReader.stop().then(() => {
+          console.log("QR code scanning stopped.");
+        }).catch((err) => {
+          console.error("Error stopping QR code scanner:", err);
+        });
+
+        // Send API call with scanned data
+        fetch('/get_parcel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tracking_no: decodedText, line_user_id: uid})
+        })
+        .then(response =>{
+          if (!response.ok) {
+            // Throw an error for non-2xx HTTP responses
+            // displayErrorResult(decodedText + ' - ' + data.message)
+            return response.json().then(errorData => {
+              // errorData=JSON.parse(errorData)
+              // alert(errorData.message)
+              let alertMessage = decodedText+' : '+errorData.message;
+              displayErrorResult(alertMessage)
+              throw new Error(alertMessage ?? `HTTP Error: ${response.status}`);
+            }).catch(() => {
+              // Fallback if JSON parsing fails
+              throw new Error(`HTTP Error: ${response.status}`);
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('API Response:', data);
+          displaySuccessResult(decodedText) 
+
+        })
+        .catch(error => {
+          // console.error('API Call Error:', error);
+          // displayErrorResult(error)
+        });
+      },
+      (errorMessage) => {
+        console.log(errorMessage);
+      }
+    ).catch((err) => {
+      console.error("Error starting QR code scanner:", err);
+    });
+    }
+
+    startScan();
+    // Stop scanning when the button is clicked
+    scanAnotherButton.addEventListener("click", () => {
+      startScan();
+      // qrResult.value = ""; // Clear the previous scanned data
+    });
+  </script>
+</body>
+</html>

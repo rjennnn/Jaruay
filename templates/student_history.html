@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามพัสดุหอพัก</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .search-container {
+            display: flex;
+            justify-content: center; /* จัดให้อยู่กลางแนวนอน */
+            align-items: center;     /* จัดให้อยู่กลางแนวตั้ง */
+            height: 100vh;           /* ทำให้เต็มหน้าจอ */
+            padding: 0 16px;         /* เพิ่ม padding ด้านข้างให้ไม่ชิดขอบ */
+        }
+
+        .results-container {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        .status-received {
+            background-color: #10B981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .status-pending {
+            background-color: #EF4444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .parcel-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Search Page -->
+    <div id="searchPage" class="search-container min-h-screen flex items-center justify-center px-4">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h1 class="text-2xl font-bold text-center mb-8 text-gray-800">ระบบติดตามพัสดุหอพัก</h1>
+            
+            <!-- พื้นที่สำหรับแสดงข้อความแจ้งเตือน -->
+            <div id="errorAlertContainer" class="mb-4"></div>
+
+            <form id="searchForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        รหัสนักศึกษา
+                    </label>
+                    <input type="text" id="studentId" name="student_id" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="กรุณากรอกรหัสนักศึกษา">
+                </div>
+                <button type="submit"
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    ค้นหา
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Page -->
+    <div id="resultsPage" class="results-container min-h-screen bg-gray-50 py-8 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h1 class="text-2xl font-bold text-center mb-6">ข้อมูลพัสดุนักศึกษา</h1>
+                
+                <!-- Student Info -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <p class="text-lg mb-2">
+                        <span class="font-semibold">นักศึกษา:</span> 
+                        <span id="studentName">-</span>
+                    </p>
+                    <p class="text-lg mb-2">
+                        <span class="font-semibold">รหัสนักศึกษา:</span> 
+                        <span id="studentIdDisplay">-</span>
+                    </p>
+                    <p class="text-lg">
+                        <span class="font-semibold">เลขห้องพัก:</span> 
+                        <span id="roomNumber">ไม่พบข้อมูล</span>
+                    </p>
+                </div>
+
+                <!-- Table Controls -->
+                <div class="flex flex-wrap justify-between items-center mb-4">
+                    <div class="flex items-center mb-2 sm:mb-0">
+                        <label class="mr-2">แสดง</label>
+                        <select id="entriesPerPage" class="border rounded px-2 py-1">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="20">20</option>
+                        </select>
+                        <label class="ml-2">แถว</label>
+                    </div>
+                    <div class="flex items-center">
+                        <label class="mr-2">ค้นหา:</label>
+                        <input type="text" id="tableSearch" 
+                            class="border rounded px-2 py-1 w-48"
+                            placeholder="ค้นหาในตาราง...">
+                    </div>
+                </div>
+
+                <!-- Parcel Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border px-4 py-2">เลขพัสดุ</th>
+                                <th class="border px-4 py-2">รูปภาพพัสดุ</th>
+                                <th class="border px-4 py-2">ขนส่งพัสดุ</th>
+                                <th class="border px-4 py-2">วันที่และเวลา</th>
+                                <th class="border px-4 py-2">สถานะพัสดุ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parcelTableBody">
+                            <!-- ข้อมูลพัสดุจะถูกเติมที่นี่ -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="flex justify-between items-center mt-4">
+                    <div class="text-sm text-gray-700">
+                        แสดงรายการที่ 
+                        <span id="showingStart">0</span> 
+                        ถึง 
+                        <span id="showingEnd">0</span> 
+                        จากทั้งหมด 
+                        <span id="totalEntries">0</span> 
+                        รายการ
+                    </div>
+                    <div class="space-x-2">
+                        <button id="prevPage" class="px-3 py-1 border rounded hover:bg-gray-100">ก่อนหน้า</button>
+                        <button id="nextPage" class="px-3 py-1 border rounded hover:bg-gray-100">ถัดไป</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = [];
+        let currentPage = 1;
+        let entriesPerPage = 5;
+            let img='ไม่มีรูปภาพ';
+            let signature='ไม่มีลายเซ็น';
+           
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const studentId = document.getElementById('studentId').value.trim();
+            const errorAlertContainer = document.getElementById('errorAlertContainer');
+
+            try {
+                const response = await fetch(`/api/parcels/${studentId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResults(data);
+                    errorAlertContainer.innerHTML = "";
+                } else {
+                    errorAlertContainer.innerHTML = `
+                        <div class="bg-red-100 text-red-800 p-3 rounded">
+                            ${data.error || 'ไม่พบข้อมูลพัสดุ'}
+                        </div>`;
+                }
+            } catch (error) {
+                errorAlertContainer.innerHTML = `
+                    <div class="bg-red-100 text-red-800 p-3 rounded">
+                        เกิดข้อผิดพลาด: ${error.message}
+                    </div>`;
+                console.error(error);
+            }
+        });
+
+        function showResults(data) {
+            // เปลี่ยนหน้าไปยังหน้าผลลัพธ์
+            document.getElementById('searchPage').style.display = 'none';
+            document.getElementById('resultsPage').style.display = 'block';
+
+            const parcels = data.parcels;
+            if (parcels && parcels.length > 0) {
+                // อัปเดตข้อมูลนักศึกษา
+                document.getElementById('studentName').textContent = parcels[0].recipient_name || '-';
+                document.getElementById('studentIdDisplay').textContent = parcels[0].student_id || '-';
+                document.getElementById('roomNumber').textContent = parcels[0].room_number || 'ไม่พบข้อมูล';
+
+                currentData = parcels;
+                currentPage = 1;
+                updateTable();
+            } else {
+                // กรณีไม่มีข้อมูลพัสดุ
+                document.getElementById('studentName').textContent = '-';
+                document.getElementById('studentIdDisplay').textContent = '-';
+                document.getElementById('roomNumber').textContent = 'ไม่พบข้อมูล';
+                document.getElementById('parcelTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">ไม่มีข้อมูลพัสดุ</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function updateTable() {
+            const tableBody = document.getElementById('parcelTableBody');
+            const searchTerm = document.getElementById('tableSearch').value.toLowerCase();
+            
+            // กรองข้อมูล
+            let filteredData = currentData.filter(parcel => 
+                Object.values(parcel).some(value => 
+                    String(value).toLowerCase().includes(searchTerm)
+                )
+            );
+
+            // การแบ่งหน้า
+            const start = (currentPage - 1) * entriesPerPage;
+            const end = start + entriesPerPage;
+            const paginatedData = filteredData.slice(start, end);
+
+            // อัปเดตตาราง
+            tableBody.innerHTML = paginatedData.length > 0 
+                ? paginatedData.map(parcel => `
+                    <tr>
+                        <td class="border px-4 py-2">${parcel.track_no || '-'}</td>
+                        <td class="border px-4 py-2">
+                        <img src="/uploads/${parcel.image_path}" alt="Parcel Image" style="width: 100px;"> 
+                                 alt="พัสดุ" class="parcel-image">
+                        </td>
+                        <td class="border px-4 py-2">${parcel.sender_type || '-'}</td>
+                        <td class="border px-4 py-2">
+                            ${parcel.created_at 
+                                ? new Date(parcel.created_at).toLocaleString('th-TH') 
+                                : '-'}
+                        </td>
+                        <td class="border px-4 py-2">
+                            <span class="${parcel.status.toLowerCase() === 'received' 
+                                ? 'status-received' 
+                                : 'status-pending'}">
+                                ${parcel.status}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('') 
+                : `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">ไม่มีข้อมูลพัสดุ</td>
+                    </tr>
+                `;
+
+            // อัปเดตข้อมูลการแบ่งหน้า
+            document.getElementById('showingStart').textContent = start + 1;
+            document.getElementById('showingEnd').textContent = Math.min(end, filteredData.length);
+            document.getElementById('totalEntries').textContent = filteredData.length;
+
+            // อัปเดตปุ่มการนำทาง
+            const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+
+        // ตัวฟังก์ชันจัดการเหตุการณ์การนำทาง
+        document.getElementById('entriesPerPage').addEventListener('change', (e) => {
+            entriesPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            updateTable();
+        });
+
+        document.getElementById('tableSearch').addEventListener('input', () => {
+            currentPage = 1;
+            updateTable();
+        });
+
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                updateTable();
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            const totalPages = Math.ceil(currentData.length / entriesPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateTable();
+            }
+        });
+    </script>
+</body>
+</html>

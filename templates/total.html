@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ประวัติพัสดุ</title>
+    <style>
+        /* ใช้ฟอนต์ที่ดูเท่ */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #fff7e6;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            background: linear-gradient(to right, #ff7f00, #ffcc00);
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+            font-size: 2.5em;
+            position: relative;
+            font-weight: 700;
+        }
+        /* เพิ่มมดสีส้มในหัวข้อ */
+        h1:before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            font-size: 1.8em;
+            color: #ff7f00;
+        }
+        h1:after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            font-size: 1.8em;
+            color: #ffcc00;
+        }
+        .search-container {
+            width: 80%;
+            margin: 20px auto;
+            text-align: center;
+            background-color: #ffe8cc;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-container input, 
+        .search-container button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+            border: 2px solid #ff914d;
+            border-radius: 5px;
+        }
+         .search-container select {
+            padding:0px;
+            margin: 0px;
+            font-size: 0px;
+            border: 0px;
+            border-radius: 0px;
+        }
+        .search-container button {
+            background-color: #ff914d;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .search-container button:hover {
+            background-color: #ff7a29;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            text-align: center;
+            background-color: #fff;
+            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        th {
+            background-color: #ff914d;
+            color: #fff;
+        }
+        td.status-received {
+            color: #28a745;
+            font-weight: bold;
+        }
+        td.status-not-received {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .pagination-container {
+            width: 80%;
+            margin: 20px auto;
+            text-align: center;
+        }
+        .pagination-container button {
+            padding: 10px 15px;
+            margin: 0 5px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #ff914d;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+        .pagination-container button:hover {
+            background-color: #ff7a29;
+        }
+        .mark-as-received-btn {
+            padding: 8px 12px;
+            font-size: 14px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .mark-as-received-btn:hover {
+            background-color: #218838;
+        }
+        .delete-btn {
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color:#218838;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #218838;
+        }
+        
+       
+    </style>
+   
+</head>
+</tbody>
+<script>
+    headers: {
+    'Content-Type'; 'application/json',
+    'Authorization'; 'Bearer YOUR_ACCESS_TOKEN'
+}
+    function searchTable() {
+    const filter = document.getElementById('searchFilter').value.trim().toLowerCase(); // ประเภทข้อมูลที่ต้องการค้นหา เช่น "recipient_name"
+    const query = document.getElementById('searchInput').value.trim().toLowerCase(); // คำค้นหา
+    const tableBody = document.getElementById('parcel_data'); // ตารางข้อมูลพัสดุ
+    const rows = tableBody.getElementsByTagName('tr'); // แถวทั้งหมดในตาราง
+
+    let found = false; // ใช้เพื่อตรวจสอบว่ามีผลลัพธ์หรือไม่
+
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td'); // เซลล์ในแต่ละแถว
+        let match = false;
+
+        for (let j = 0; j < cells.length; j++) {
+            const cell = cells[j];
+            const cellText = cell.textContent.trim().toLowerCase();
+
+            if (filter === "all" || cellText.includes(query)) { 
+                match = true;
+                break; // หากพบ text
+            }
+        }
+
+        // แสดง/ซ่อนแถวตามผลการค้นหา
+    if (match) {
+            rows[i].style.display = ""; // แสดงแถวที่ตรงกับการค้นหา
+            found = true; //แสดงแถว ก้อนสุดท้าย
+
+}
+ else {
+            rows[i].style.display = "none"; // ซ่อนแถวที่ไม่ตรงกับการค้นหา
+        }
+    }
+
+    // หากไม่มีผลลัพธ์ที่ตรงกับการค้นหา
+    if (!found) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="10" class="error-message">ไม่พบข้อมูลตามคำค้นหา</td>
+            </tr>
+        `;
+    }
+}
+
+// Function to fetch parcels with improved error handling and status persistence
+async function fetchParcels() {
+    try {
+        const response = await fetch(`/api/parceltotal`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const parcels = await response.json();
+        const tableBody = document.getElementById('parcel_data');
+        tableBody.innerHTML = ''; // ล้างตารางก่อนแสดงผลใหม่
+
+        // จัดเรียงให้ Pending ขึ้นก่อน
+        const sortedParcels = parcels.sort((a, b) => {
+            if (a.status === 'Pending' && b.status !== 'Pending') {
+                return -1;
+            }
+            if (a.status !== 'Pending' && b.status === 'Pending') {
+                return 1;
+            }
+            return 0;
+        });
+
+        // สร้างตารางใหม่จากข้อมูลที่จัดเรียงแล้ว
+        sortedParcels.forEach(parcel => {
+            const row = createParcelRow(parcel);
+            tableBody.appendChild(row);
+        });
+        
+        console.log('All parcels:', parcels); // ตรวจสอบข้อมูลทั้งหมด
+        
+        if (!Array.isArray(parcels)) {
+            throw new Error("Invalid data format: Expected an array");
+        }
+
+   // ตรวจสอบจำนวนทั้งหมดของ parcels ก่อนการกรอง
+   console.log('Total parcels count:', parcels.length);
+
+   const filteredParcels = parcels.filter(parcel => 
+    parcel.recipient_name.trim() === parcel.first_name.trim() 
+);
+        console.log('Filtered parcels count:', filteredParcels.length); // ตรวจสอบจำนวนหลังจากกรอง
+    // Loop through the filtered parcels and render each row
+    filteredParcels.forEach(parcel => {
+        const row = document.createElement('tr');
+        row.setAttribute('data-id', parcel.id);
+
+        // Determine button state based on current status
+        const isReceived = parcel.status === 'Received';
+        const buttonDisabled = isReceived ? 'disabled' : '';
+        const buttonText = isReceived ? 'Received' : 'เปลี่ยนเป็นรับแล้ว';
+        const statusClass = isReceived ? 'status-received' : 'status-not-received';
+      
+        // Handle image and signature display
+
+        // Generate row content
+      let img='ไม่มีรูปภาพ';
+            let signature='ไม่มีลายเซ็น';
+            if (parcel.image_path) {
+                img=`<img src="'https://mod-dormparcel.duckdns.org/uploads/${parcel.image_path}" alt="Parcel Image" style="width: 100px;">`;
+            }
+            if (parcel.signature) {
+                signature=`<img src="'https://mod-dormparcel.duckdns.org/signature/${parcel.signature}" alt="Signature Image" style="width: 100px;">`;
+            }
+
+        row.innerHTML = `
+                <td>${parcel.recipient_name}</td>
+                 <td>${parcel.last_name}</td>
+                <td>${parcel.track_no}</td>
+                <td>${parcel.student_id}</td>
+                <td>${parcel.room_number}</td>
+                  <td>${parcel.created_at}</td> 
+                <td>${parcel.sender_type}</td>
+            <td>${img}</td>
+            <td class="${statusClass}" data-status-cell="true">
+                ${parcel.status || 'Pending'}
+            </td>
+            <td>${signature}</td>
+            <td>
+                <button 
+                    onclick="markAsReceived(${parcel.id})" 
+                    class="status-button" 
+                    ${buttonDisabled}>
+                    ${buttonText}
+                </button>
+            </td>
+        `;
+
+        // Append row to the table body
+        tableBody.appendChild(row);
+    });
+} catch (error) {
+ } console.error('Error fetching parcels:', error);
+
+    // Show user-friendly error message
+    const tableBody = document.getElementById('parcel_data');
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="11" class="error-message">
+                Unable to load parcels. Please try again later.
+            </td>
+        </tr>
+    `;
+}
+
+
+// Improved markAsReceived function with comprehensive error handling
+// Improved markAsReceived function with dynamic UI updates
+async function markAsReceived(parcelId) {
+    const userConfirmed = confirm("Are you sure you want to mark this parcel as Received?");
+    if (!userConfirmed) {
+        return; // Exit if user cancels
+    }
+
+    try {
+        if (!parcelId) {
+            throw new Error('Parcel ID is required.');
+        }
+
+        // Send request to update the parcel status
+        const response = await fetch('/update_parcel_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ parcel_id: parcelId })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || `Server error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Update the UI dynamically
+        const row = document.querySelector(`tr[data-id='${parcelId}']`);
+        if (row) {
+            const statusCell = row.querySelector('[data-status-cell]');
+            const button = row.querySelector('.status-button');
+
+            if (statusCell) {
+                statusCell.textContent = 'Received';
+                statusCell.classList.remove('status-not-received');
+                statusCell.classList.add('status-received');
+            }
+
+            if (button) {
+                button.textContent = 'Received';
+                button.disabled = true;
+            }
+
+            // Save the updated status in localStorage
+            localStorage.setItem(`parcel_status_${parcelId}`, 'Received');
+        }
+
+        alert(result.message || 'Status updated successfully.');
+    } catch (error) {
+        console.error('Error updating status:', error);
+        alert(error.message || 'Failed to update status. Please try again.');
+    }
+}
+
+
+// Modify fetchParcels to check and apply local storage status
+async function fetchParcels() {
+    try {
+        const response = await fetch(`/api/parceltotal`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const parcels = await response.json();
+        const tableBody = document.getElementById('parcel_data');
+        tableBody.innerHTML = ''; // ล้างตารางก่อนแสดงผลใหม่
+
+        // จัดเรียงให้ Pending ขึ้นก่อน
+        const sortedParcels = parcels.sort((a, b) => {
+            if (a.status === 'Pending' && b.status !== 'Pending') {
+                return -1;
+            }
+            if (a.status !== 'Pending' && b.status === 'Pending') {
+                return 1;
+            }
+            return 0;
+        });
+       
+        console.log('All parcels:', parcels); // ตรวจสอบข้อมูลทั้งหมด
+        
+        if (!Array.isArray(parcels)) {
+            throw new Error("Invalid data format: Expected an array");
+        }
+
+   // ตรวจสอบจำนวนทั้งหมดของ parcels ก่อนการกรอง
+   console.log('Total parcels count:', parcels.length);
+   tableBody.innerHTML = '';
+
+
+   const filteredParcels = parcels.filter(parcel => 
+    parcel.recipient_name.trim() === parcel.first_name.trim() 
+)
+       .forEach(parcel => {
+            // Check local storage for persisted status
+            const storedStatus = localStorage.getItem(`parcel_status_${parcel.id}`);
+            const finalStatus = storedStatus || parcel.status;
+
+            const row = document.createElement('tr');
+            row.setAttribute('data-id', parcel.id);
+
+            const isReceived = finalStatus === 'Received';
+            const statusClass = isReceived ? 'status-received' : 'status-not-received';
+           let img='ไม่มีรูปภาพ';
+            let signature='ไม่มีลายเซ็น';
+            if (parcel.image_path) {
+                img=`<img src="'https://mod-dormparcel.duckdns.org/uploads/${parcel.image_path}" alt="Parcel Image" style="width: 100px;">`;
+            }
+            if (parcel.signature) {
+                signature=`<img src="'https://mod-dormparcel.duckdns.org/signature/${parcel.signature}" alt="Signature Image" style="width: 100px;">`;
+            }
+            row.innerHTML = `
+                <td>${parcel.recipient_name}</td>
+                 <td>${parcel.last_name}</td>
+                <td>${parcel.track_no}</td>
+                <td>${parcel.student_id}</td>
+                <td>${parcel.room_number}</td>
+                  <td>${parcel.created_at}</td> 
+                <td>${parcel.sender_type}</td>
+                <td>${img}</td>
+            <td class="${statusClass}" data-status-cell="true">
+                ${parcel.status || 'Pending'}
+            </td>
+            <td>${signature}</td>
+                <td>
+                    <button 
+                        onclick="markAsReceived(${parcel.id})" 
+                        class="status-button" 
+                        ${isReceived ? 'disabled' : ''}>
+                        ${isReceived ? 'Received' : 'เปลี่ยนเป็นรับแล้ว'}
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+
+} catch (error) {
+    console.error('Error fetching parcels:', error);
+    const tableBody = document.getElementById('parcel_data');
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="10" class="error-message">
+                Unable to load parcels. Please try again later.
+            </td>
+        </tr>
+    `;
+}
+
+// Clear local storage status when needed (optional)
+function clearParcelStatusStorage() {
+    // Remove all parcel status entries from local storage
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('parcel_status_')) {
+            localStorage.removeItem(key);
+        }
+    });
+}
+
+// Call fetchParcels when page loads
+window.onload = fetchParcels;
+
+// Clear local storage status when needed (optional)
+function clearParcelStatusStorage() {
+    // Remove all parcel status entries from local storage
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('parcel_status_')) {
+            localStorage.removeItem(key);
+        }
+    });
+}}
+
+// Call fetchParcels when page loads
+window.onload = fetchParcels;
+// Utility function for user notifications
+function showNotification(message, type = 'success') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    // Append to body
+    document.body.appendChild(notification);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        document.body.removeChild(notification);
+    }, 3000);
+}
+
+// Add CSS for styling
+const styleElement = document.createElement('style');
+styleElement.textContent = `
+    .status-button {
+        padding: 5px 10px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .status-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    .status-received {
+        color: green;
+        font-weight: bold;
+    }
+
+    .status-not-received {
+        color: orange;
+    }
+
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px;
+        border-radius: 5px;
+        color: white;
+        z-index: 1000;
+    }
+
+    .notification.success {
+        background-color: green;
+    }
+
+    .notification.error {
+        background-color: red;
+    }
+
+    .error-message {
+        color: red;
+        text-align: center;
+        font-weight: bold;
+    }
+`;
+document.head.appendChild(styleElement);
+
+// Add this to your existing HTML table generation in fetchParcels function
+function createParcelRow(parcel) {
+    const row = document.createElement('tr');
+
+    row.setAttribute('data-id', parcel.id);
+    
+    row.innerHTML = `
+
+         <td>${parcel.recipient_name}</td>
+        <td>${parcel.last_name}</td>
+        <td>${parcel.track_no}</td>
+        <td>${parcel.student_id}</td>
+        <td>${parcel.room_number}</td>
+          <td>${parcel.created_at}</td> 
+        <td>${parcel.sender_type}</td>
+        <td>${parcel.image_path ? `<img src="/uploads/${parcel.image_path}" alt="Parcel Image" style="width: 100px;">` : 'No Image'}</td>
+        <td class="${parcel.status === 'Received' ? 'status-received' : 'status-not-received'}">
+            ${parcel.status || 'Pending'}
+        </td>
+        <td>${parcel.signature ? `<img src="/signature/${parcel.signature}" alt="Signature" style="width: 100px;">` : 'No Signature'}</td>
+        <td>
+            <button 
+                onclick="เปลี่ยนเป็นรับแล้ว(${parcel.id})" 
+                class="confirm-btn"
+                ${parcel.status === 'Received' ? 'disabled' : ''}
+            >
+                ${parcel.status === 'Received' ? 'Received' : 'เปลี่ยนเป็นรับแล้ว'}
+            </button>
+        </td>
+    `;
+    
+    return row;
+}
+// เรียกใช้งานฟังก์ชัน fetchParcels เมื่อโหลดหน้าเว็บ
+window.onload = fetchParcels;
+</script>
+<body>
+    
+    <h1>ประวัติพัสดุ</h1>
+    <div class="search-container">
+        <select id="searchFilter">
+           
+        </select>
+        <input type="text" id="searchInput" placeholder="ป้อนข้อมูลที่ต้องการค้นหา">
+        <button onclick="searchTable()">ค้นหา</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+        
+                <th>ชื่อ</th>
+                <th>นามสกุล</th>
+                <th>เลขแทร็ก</th>
+                <th>รหัสนักศึกษา</th>
+                <th>เลขห้อง</th>
+                <th>วันที่และเวลา</th>
+                <th>บริษัทขนส่ง</th>
+                <th>รูปภาพพัสดุ</th>
+                <th>สถานะพัสดุ</th>
+                <th>ลายเซ็น</th>
+                <th>จัดการ</th>
+
+            </tr>
+        </thead>
+        <tbody id="parcel_data"></tbody>
+    </table>
+    <div class="pagination-container">
+        <button onclick="prevPage()">ก่อนหน้า</button>
+        <span id="page-info">หน้า 1</span>
+        <button onclick="nextPage()">ถัดไป</button>
+    </div>
+
+<script>
+    let currentPage = 1;
+    const rowsPerPage = 5;
+    let parcelData = [];
+
+    function renderTable(page = 1) {
+const tableBody = document.getElementById("parcel");
+tableBody.innerHTML = "";
+
+const start = (page - 1) * rowsPerPage;
+const end = start + rowsPerPage;
+
+const rows = parcelData.slice(start, end);
+const express = require('express');
+const app = express();
+app.put('/api/parcels/updateStatus', async (req, res) => {
+const { id, status } = req.body;
+
+try {
+    const [result] = await db.query('UPDATE parcels SET status = ? WHERE id = ?', [status, id]);
+    if (result.affectedRows > 0) {
+        res.json({ success: true, message: 'Status updated successfully' });
+    } else {
+        res.status(404).json({ success: false, message: 'Parcel not found' });
+    }
+} catch (error) {
+    console.error('Error updating parcel:', error);
+    res.status(500).json({ success: false, message: 'Database error' });
+}
+});
+
+
+// ฟังก์ชันดึงข้อมูลพัสดุพร้อมตัวกรอง
+async function searchTable() {
+const filter = document.getElementById('searchFilter').value;
+const query = document.getElementById('searchInput').value;
+
+}
+
+rows.forEach(parcel => {
+    const row = `
+        
+             <td>${start + index + 1}</td>
+  <td>${parcel.id}</td>
+        <td>${parcel.recipient_name}</td>
+        <td>${parcel.last_name}</td>
+        <td>${parcel.track_no}</td>
+        <td>${parcel.student_id}</td>
+        <td>${parcel.room_number}</td>
+          <td>${parcel.created_at}</td> 
+        <td>${parcel.sender_type}</td>
+                    <td><img src="images/${parcel. image_path}" alt="Parcel Image" style="width: 100px;"></td>
+                    <td class="${parcel.status === 'Received' ? 'status-received' : 'status-not-received'}">
+                ${parcel.status || 'Pending'}
+                    <td>${parcel.signature}</td>
+                    <td>
+<button 
+    onclick="markAsReceived(${parcel.id})" 
+    class="status-button" 
+    ${parcel.status === 'Received' ? 'disabled' : ''}>
+    ${parcel.status === 'Received' ? 'Received' : 'เปลี่ยนเป็นรับแล้ว'}
+</button>
+</td>
+                    
+    `;
+    tableBody.innerHTML += row;
+});
+
+document.getElementById("page-info").innerText = `หน้า ${page}`;
+}
+
+
+    function nextPage() {
+        if (currentPage * rowsPerPage < parcelData.length) {
+            currentPage++;
+            renderTable(currentPage);
+        }
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            renderTable(currentPage);
+        }
+    }
+
+</script>
